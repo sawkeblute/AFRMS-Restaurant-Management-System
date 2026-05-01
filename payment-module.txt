@@ -1,0 +1,2 @@
+Payment module initialized by Saw Joshua.
+This module will support payment validation, receipt generation, and trasaction traceability. 
