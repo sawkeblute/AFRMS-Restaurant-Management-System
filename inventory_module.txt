@@ -1,0 +1,2 @@
+Inventory module initialized by Similosakhe Moyo.
+This module will support stock updates, inventory transactions, and low-stock alert preparation.
