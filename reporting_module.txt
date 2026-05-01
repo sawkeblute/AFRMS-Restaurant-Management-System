@@ -1,0 +1,2 @@
+Reporting module initialized by Samantha Jawjong.
+This module will support dashboard reports, sales summaries, and performance analytics.
