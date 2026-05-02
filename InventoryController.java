@@ -2,46 +2,106 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class InventoryController {
-    private final Map<String, InventoryItem> inventory = new HashMap<>();
 
-    public void addIngredient(InventoryItem item) {
-        if (item == null) {
-            throw new IllegalArgumentException("Inventory item cannot be null.");
+    // Store items and their quantities
+    private Map<String, Integer> inventory;
+
+    // Low stock threshold
+    private static final int LOW_STOCK_THRESHOLD = 5;
+
+    public InventoryController() {
+        inventory = new HashMap<>();
+    }
+
+    // Add new item or update stock
+    public void addItem(String itemName, int quantity) {
+        if (itemName == null || itemName.isEmpty()) {
+            System.out.println("Invalid item name.");
+            return;
         }
-        inventory.put(item.getId(), item);
-    }
 
-    public String recordSupplierDelivery(String ingredientId, double amount, String justification) {
-        InventoryItem item = requireItem(ingredientId);
-        requireJustification(justification);
-        item.addStock(amount);
-        return "Inventory updated: supplier delivery recorded.";
-    }
-
-    public String deductAfterSale(String ingredientId, double amount, String orderId) {
-        InventoryItem item = requireItem(ingredientId);
-        if (orderId == null || orderId.isBlank()) {
-            throw new IllegalArgumentException("Order ID is required for inventory deduction.");
+        if (quantity <= 0) {
+            System.out.println("Quantity must be greater than zero.");
+            return;
         }
-        item.deductStock(amount);
-        return "Inventory deducted for order " + orderId + ".";
+
+        inventory.put(itemName, inventory.getOrDefault(itemName, 0) + quantity);
+        AuditLog.log("Added " + quantity + " of " + itemName);
     }
 
-    public boolean isLowStock(String ingredientId) {
-        return requireItem(ingredientId).isLowStock();
-    }
-
-    private InventoryItem requireItem(String ingredientId) {
-        InventoryItem item = inventory.get(ingredientId);
-        if (item == null) {
-            throw new IllegalArgumentException("Ingredient not found.");
+    // Remove stock (e.g., when order is placed)
+    public boolean reduceStock(String itemName, int quantity) {
+        if (!inventory.containsKey(itemName)) {
+            System.out.println("Item not found in inventory.");
+            return false;
         }
-        return item;
+
+        int currentStock = inventory.get(itemName);
+
+        if (quantity <= 0) {
+            System.out.println("Invalid quantity.");
+            return false;
+        }
+
+        if (currentStock < quantity) {
+            System.out.println("Not enough stock for " + itemName);
+            AuditLog.logError("Stock reduction failed for " + itemName);
+            return false;
+        }
+
+        inventory.put(itemName, currentStock - quantity);
+        AuditLog.log("Reduced " + quantity + " of " + itemName);
+
+        checkLowStock(itemName);
+
+        return true;
     }
 
-    private void requireJustification(String justification) {
-        if (justification == null || justification.isBlank()) {
-            throw new IllegalArgumentException("Inventory changes require a justification.");
+    // Check if item is low in stock
+    public void checkLowStock(String itemName) {
+        int stock = inventory.getOrDefault(itemName, 0);
+
+        if (stock <= LOW_STOCK_THRESHOLD) {
+            System.out.println("Warning: Low stock for " + itemName + " (" + stock + " left)");
+            AuditLog.logWarning("Low stock alert for " + itemName);
         }
+    }
+
+    // Get current stock
+    public int getStock(String itemName) {
+        return inventory.getOrDefault(itemName, 0);
+    }
+
+    // Display all inventory
+    public void printInventory() {
+        System.out.println("----- INVENTORY LIST -----");
+
+        if (inventory.isEmpty()) {
+            System.out.println("Inventory is empty.");
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
+            System.out.println("Item: " + entry.getKey() + " | Quantity: " + entry.getValue());
+        }
+
+        System.out.println("--------------------------");
+    }
+
+    // Restock item
+    public void restockItem(String itemName, int quantity) {
+        addItem(itemName, quantity);
+        AuditLog.log("Restocked " + itemName + " with " + quantity);
+    }
+
+    // Remove item completely
+    public void removeItem(String itemName) {
+        if (!inventory.containsKey(itemName)) {
+            System.out.println("Item does not exist.");
+            return;
+        }
+
+        inventory.remove(itemName);
+        AuditLog.log("Removed item: " + itemName);
     }
 }

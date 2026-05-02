@@ -1,78 +1,68 @@
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class Order {
-    private final String id;
-    private final String userId;
-    private final List<OrderItem> items;
-    private String status;
 
-    public Order(String id, String userId) {
-        if (id == null || id.isBlank()) {
-            throw new IllegalArgumentException("Order ID is required.");
-        }
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("User ID is required.");
-        }
+    private List<OrderItem> items;
+    private double total;
 
-        this.id = id;
-        this.userId = userId;
-        this.items = new ArrayList<>();
-        this.status = "Preparing";
+    public Order() {
+        items = new ArrayList<>();
+        total = 0.0;
     }
 
-    public Order(double total) {
-        this("ORD-TEST", "USR-TEST");
-        addItem("Test Item", 1, total, total * 0.5);
-    }
-
-    public void addItem(String name, int quantity, double unitPrice, double unitCost) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Menu item name is required.");
-        }
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero.");
-        }
-        if (unitPrice < 0 || unitCost < 0) {
-            throw new IllegalArgumentException("Price and cost cannot be negative.");
+    // Add item to order
+    public void addItem(OrderItem item) {
+        if (item == null) {
+            System.out.println("Cannot add null item.");
+            return;
         }
 
-        items.add(new OrderItem(name, quantity, unitPrice, unitCost));
+        items.add(item);
+        AuditLog.log("Added item: " + item.getItemName());
+        calculateTotal();
     }
 
-    public String getId() {
-        return id;
+    // Remove item by name
+    public void removeItem(String itemName) {
+        items.removeIf(item -> item.getItemName().equalsIgnoreCase(itemName));
+        AuditLog.log("Removed item: " + itemName);
+        calculateTotal();
     }
 
-    public String getUserId() {
-        return userId;
-    }
+    // Calculate total price
+    public void calculateTotal() {
+        total = 0.0;
 
-    public List<OrderItem> getItems() {
-        return Collections.unmodifiableList(items);
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        if (status == null || status.isBlank()) {
-            throw new IllegalArgumentException("Order status is required.");
+        for (OrderItem item : items) {
+            total += item.calculateTotal();
         }
-        this.status = status;
     }
 
-    public double getSubtotal() {
-        return items.stream().mapToDouble(OrderItem::getLineTotal).sum();
-    }
-
+    // Get total
     public double getTotal() {
-        return getSubtotal() * 1.07;
+        return total;
     }
 
-    public double getEstimatedProfit() {
-        return items.stream().mapToDouble(OrderItem::getLineProfit).sum();
+    // Print full order summary
+    public void printOrder() {
+        System.out.println("===== ORDER SUMMARY =====");
+
+        if (items.isEmpty()) {
+            System.out.println("No items in order.");
+            return;
+        }
+
+        for (OrderItem item : items) {
+            item.printItem();
+        }
+
+        System.out.println("Total Amount: " + total);
+        System.out.println("=========================");
+    }
+
+    // Get items list (optional for future use)
+    public List<OrderItem> getItems() {
+        return items;
     }
 }
