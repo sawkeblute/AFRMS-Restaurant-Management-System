@@ -437,8 +437,8 @@ class App {
                     ${order.items.map(item => `<div class="ticket-line"><strong>${item.quantity}x</strong><span>${item.name}</span></div>`).join('')}
                 </div>
                 <div class="button-row">
-                    ${order.status !== 'Ready' && order.status !== 'Completed' ? `<button class="secondary-btn" data-status="${order.id}" data-next="Ready"><i data-lucide="bell"></i> Ready</button>` : ''}
-                    ${order.status !== 'Completed' ? `<button class="secondary-btn" data-status="${order.id}" data-next="Completed"><i data-lucide="check"></i> Complete</button>` : ''}
+                    ${order.status !== 'Ready' && order.status !== 'Completed' ? `<button class="kitchen-action ready-action" data-status="${order.id}" data-next="Ready"><i data-lucide="bell-ring"></i><span>Mark Ready</span></button>` : ''}
+                    ${order.status !== 'Completed' ? `<button class="kitchen-action complete-action" data-status="${order.id}" data-next="Completed"><i data-lucide="check-circle-2"></i><span>Complete</span></button>` : ''}
                 </div>
             </article>`;
     }
