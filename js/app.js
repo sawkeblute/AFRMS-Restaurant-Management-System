@@ -11,6 +11,17 @@ import {
 
 const STORAGE_KEY = 'afrms-state-v6-menu-images-beverages';
 const currency = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
+const VIEW_LABELS = {
+    dashboard: 'Dashboard',
+    menu: 'Menu',
+    pos: 'Point of Sale',
+    orders: 'Kitchen Orders',
+    inventory: 'Inventory',
+    reports: 'Reports',
+    audit: 'Audit Log',
+    settings: 'Settings'
+};
+const PERMISSION_VIEWS = Object.keys(VIEW_LABELS);
 
 class App {
     constructor() {
@@ -30,15 +41,37 @@ class App {
 
     loadState() {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return {
+                ...parsed,
+                rolePermissions: this.normalizeRolePermissions(parsed.rolePermissions)
+            };
+        }
 
         return {
             menu: MENU_DATA.map(item => ({ ...item })),
             inventory: INITIAL_INVENTORY.map(item => ({ ...item })),
             orders: INITIAL_ORDERS.map(order => ({ ...order })),
             inventoryTransactions: [],
-            auditLogs: []
+            auditLogs: [],
+            rolePermissions: this.defaultRolePermissions()
         };
+    }
+
+    defaultRolePermissions() {
+        return Object.fromEntries(
+            Object.entries(ROLE_PERMISSIONS).map(([role, permissions]) => [role, [...permissions]])
+        );
+    }
+
+    normalizeRolePermissions(savedPermissions = {}) {
+        const defaults = this.defaultRolePermissions();
+        return Object.fromEntries(Object.entries(defaults).map(([role, fallback]) => {
+            const saved = Array.isArray(savedPermissions[role]) ? savedPermissions[role] : fallback;
+            const valid = saved.filter(view => PERMISSION_VIEWS.includes(view));
+            return [role, valid.length ? [...new Set(valid)] : [...fallback]];
+        }));
     }
 
     persist() {
@@ -83,7 +116,7 @@ class App {
     }
 
     allowedViews() {
-        return ROLE_PERMISSIONS[this.currentUser?.role] || [];
+        return this.state.rolePermissions[this.currentUser?.role] || [];
     }
 
     firstAllowedView() {
@@ -103,7 +136,14 @@ class App {
 
     setupNavigation() {
         document.querySelectorAll('.nav-item').forEach(item => {
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
             item.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.switchView(item.getAttribute('data-view'));
+            });
+            item.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
                 this.switchView(item.getAttribute('data-view'));
             });
@@ -120,6 +160,7 @@ class App {
         const active = document.querySelector(`[data-view="${view}"]`);
         if (active) active.classList.add('active');
         this.currentView = view;
+        window.scrollTo(0, 0);
         this.renderView(view);
     }
 
@@ -361,7 +402,7 @@ class App {
         this.audit('ORDER_CREATED', order.id, `Paid order processed for ${currency.format(order.total)}`);
         this.cart = [];
         this.persist();
-        alert(`Receipt ${order.id}\nTotal: ${currency.format(order.total)}\nStatus: Paid`);
+        this.toast(`Receipt ${order.id} processed for ${currency.format(order.total)}.`);
         this.switchView('dashboard');
     }
 
@@ -453,6 +494,7 @@ class App {
         order.status = status;
         this.audit('ORDER_STATUS_UPDATED', order.id, `Kitchen status changed to ${status}`);
         this.persist();
+        this.toast(`${order.id} marked ${status}.`);
         this.initOrders();
     }
 
@@ -472,7 +514,7 @@ class App {
         const ingredient = this.state.inventory.find(item => item.id === ingredientId);
 
         if (!ingredient || Number.isNaN(amount) || amount <= 0 || !note) {
-            alert('Please enter a positive quantity and justification.');
+            this.toast('Please enter a positive quantity and justification.', 'error');
             return;
         }
 
@@ -489,6 +531,7 @@ class App {
         });
         this.audit('INVENTORY_UPDATED', ingredientId, note);
         this.persist();
+        this.toast(`${ingredient.name} stock updated.`);
         event.target.reset();
         this.initInventory();
     }
@@ -533,11 +576,90 @@ class App {
     }
 
     initSettings() {
-        document.getElementById('role-matrix').innerHTML = Object.entries(ROLE_PERMISSIONS).map(([role, permissions]) => `
-            <div class="list-row">
-                <strong>${role}</strong>
-                <span>${permissions.join(', ')}</span>
-            </div>`).join('');
+        const container = document.getElementById('role-matrix');
+        container.className = 'settings-panel';
+        container.innerHTML = `
+            <div class="settings-actions">
+                <p class="muted">Choose which modules each role can access. Changes apply immediately after saving.</p>
+                <div class="button-row">
+                    <button id="rbac-save-btn" class="primary-btn" type="button"><i data-lucide="save"></i> Save Permissions</button>
+                    <button id="rbac-reset-btn" class="secondary-btn" type="button"><i data-lucide="rotate-ccw"></i> Reset Defaults</button>
+                </div>
+            </div>
+            <div class="role-grid">
+                ${Object.keys(this.state.rolePermissions).map(role => this.renderRoleCard(role)).join('')}
+            </div>
+            <p id="settings-message" class="message-text" aria-live="polite"></p>`;
+
+        document.getElementById('rbac-save-btn').addEventListener('click', () => this.saveRolePermissions());
+        document.getElementById('rbac-reset-btn').addEventListener('click', () => this.resetRolePermissions());
+        this.refreshIcons();
+    }
+
+    renderRoleCard(role) {
+        const permissions = this.state.rolePermissions[role] || [];
+        return `
+            <section class="role-card">
+                <div class="role-card-header">
+                    <h2>${role}</h2>
+                    <span class="pill">${permissions.length} modules</span>
+                </div>
+                <div class="permission-list">
+                    ${PERMISSION_VIEWS.map(view => {
+                        const checked = permissions.includes(view);
+                        const protectsCurrentAdmin = role === this.currentUser?.role && view === 'settings';
+                        return `
+                            <label class="permission-toggle">
+                                <input
+                                    type="checkbox"
+                                    data-role="${role}"
+                                    data-permission="${view}"
+                                    ${checked ? 'checked' : ''}
+                                    ${protectsCurrentAdmin ? 'disabled' : ''}>
+                                <span>${VIEW_LABELS[view]}</span>
+                            </label>`;
+                    }).join('')}
+                </div>
+            </section>`;
+    }
+
+    saveRolePermissions() {
+        const nextPermissions = {};
+        let hasEmptyRole = false;
+
+        Object.keys(this.state.rolePermissions).forEach(role => {
+            const checked = [...document.querySelectorAll(`[data-role="${role}"]:checked`)]
+                .map(input => input.dataset.permission);
+            if (role === this.currentUser?.role && !checked.includes('settings')) checked.push('settings');
+            nextPermissions[role] = PERMISSION_VIEWS.filter(view => checked.includes(view));
+            if (!nextPermissions[role].length) hasEmptyRole = true;
+        });
+
+        if (hasEmptyRole) {
+            document.getElementById('settings-message').textContent = 'Every role needs at least one accessible module.';
+            return;
+        }
+
+        this.state.rolePermissions = nextPermissions;
+        this.audit('RBAC_UPDATED', 'RolePermissions', 'Role access matrix updated');
+        this.persist();
+        this.applyRolePermissions();
+        this.toast('RBAC permissions saved.');
+
+        if (!this.canAccess(this.currentView)) {
+            this.switchView(this.firstAllowedView());
+            return;
+        }
+        this.initSettings();
+    }
+
+    resetRolePermissions() {
+        this.state.rolePermissions = this.defaultRolePermissions();
+        this.audit('RBAC_RESET', 'RolePermissions', 'Role access matrix reset to defaults');
+        this.persist();
+        this.applyRolePermissions();
+        this.toast('RBAC permissions reset to defaults.');
+        this.initSettings();
     }
 
     formatQty(value) {
@@ -548,8 +670,21 @@ class App {
         return `<p class="muted">${text}</p>`;
     }
 
-    toast(text) {
-        alert(text);
+    toast(text, type = 'success') {
+        let toast = document.getElementById('app-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'app-toast';
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', 'polite');
+            document.body.appendChild(toast);
+        }
+        toast.className = `app-toast ${type === 'error' ? 'error' : ''}`;
+        toast.textContent = text;
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+            toast.classList.add('hiding');
+        }, 2600);
     }
 }
 

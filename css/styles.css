@@ -23,6 +23,7 @@
     --border-dark: rgba(255, 250, 240, 0.14);
     --shadow: 0 18px 44px rgba(31, 26, 22, 0.16);
     --transition: all 0.18s ease;
+    --page-gutter: 2rem;
 }
 
 * {
@@ -30,6 +31,12 @@
     margin: 0;
     padding: 0;
     font-family: 'Outfit', Arial, sans-serif;
+}
+
+html {
+    min-width: 320px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body {
@@ -43,14 +50,21 @@ body {
     overflow-x: hidden;
 }
 
+img,
+svg {
+    max-width: 100%;
+}
+
 button,
 input,
 select {
     font: inherit;
+    max-width: 100%;
 }
 
 button {
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 label {
@@ -63,6 +77,8 @@ label {
 
 input,
 select {
+    width: 100%;
+    min-width: 0;
     min-height: 42px;
     border: 1px solid rgba(69, 55, 43, 0.24);
     border-radius: 8px;
@@ -87,6 +103,7 @@ h1 {
     line-height: 1.15;
     color: var(--ink);
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 h2 {
@@ -144,6 +161,7 @@ h2 {
         linear-gradient(180deg, #241d18, #31251f 56%, #1f1a16);
     border-right: 1px solid rgba(255, 250, 240, 0.12);
     box-shadow: 10px 0 30px rgba(31, 26, 22, 0.18);
+    overflow-y: auto;
 }
 
 .sidebar[hidden],
@@ -205,7 +223,8 @@ main[hidden] {
 main {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 1.6rem 2rem 2.5rem;
+    min-width: 0;
+    padding: 1.6rem var(--page-gutter) 2.5rem;
 }
 
 header,
@@ -239,6 +258,7 @@ header {
 }
 
 .search-bar {
+    flex: 1 1 320px;
     width: min(540px, 100%);
     min-height: 46px;
     display: flex;
@@ -264,6 +284,7 @@ header {
 }
 
 .user-profile {
+    flex: 0 0 auto;
     gap: 0.85rem;
     padding: 0.45rem 0.5rem 0.45rem 0.9rem;
     border: 1px solid rgba(69, 55, 43, 0.14);
@@ -287,7 +308,7 @@ header {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
@@ -298,7 +319,9 @@ header {
 .list-panel,
 .control-panel,
 .table-wrap,
-.kitchen-column {
+.kitchen-column,
+.settings-panel,
+.role-card {
     border: 1px solid var(--border);
     border-radius: 8px;
     background: rgba(255, 250, 240, 0.94);
@@ -351,6 +374,7 @@ header {
     gap: 1rem;
     padding: 0.8rem;
     border-bottom: 1px solid rgba(69, 55, 43, 0.12);
+    min-width: 0;
 }
 
 .list-row:last-child {
@@ -361,6 +385,7 @@ header {
 .list-row strong {
     display: grid;
     gap: 0.25rem;
+    min-width: 0;
 }
 
 .list-row strong {
@@ -370,6 +395,7 @@ header {
 .list-row span {
     color: var(--ink-soft);
     font-size: 0.85rem;
+    overflow-wrap: anywhere;
 }
 
 .category-filters {
@@ -385,6 +411,8 @@ header {
     border-radius: 8px;
     background: rgba(239, 229, 214, 0.92);
     backdrop-filter: blur(10px);
+    overflow-x: auto;
+    scrollbar-width: thin;
 }
 
 .filter-btn,
@@ -399,6 +427,7 @@ header {
     justify-content: center;
     gap: 0.5rem;
     transition: var(--transition);
+    white-space: nowrap;
 }
 
 .filter-btn,
@@ -446,7 +475,7 @@ header {
 
 .menu-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(245px, 100%), 1fr));
     gap: 1rem;
 }
 
@@ -454,6 +483,7 @@ header {
     overflow: hidden;
     color: var(--ink);
     transition: var(--transition);
+    min-width: 0;
 }
 
 .menu-card:hover {
@@ -482,6 +512,7 @@ header {
     color: var(--ink);
     font-size: 1.03rem;
     margin-bottom: 0.36rem;
+    overflow-wrap: anywhere;
 }
 
 .thai-name {
@@ -496,6 +527,7 @@ header {
     color: var(--ink-soft);
     font-size: 0.875rem;
     line-height: 1.45;
+    overflow-wrap: anywhere;
 }
 
 .menu-footer,
@@ -518,6 +550,7 @@ header {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 0;
 }
 
 .cart-header,
@@ -552,6 +585,16 @@ header {
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.9rem;
+    min-width: 0;
+}
+
+.cart-item-info {
+    min-width: 0;
+}
+
+.cart-item-info h4,
+.cart-item-info span {
+    overflow-wrap: anywhere;
 }
 
 .cart-item-info h4 {
@@ -570,7 +613,7 @@ header {
 
 .kitchen-board {
     display: grid;
-    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    grid-template-columns: repeat(3, minmax(min(260px, 100%), 1fr));
     gap: 1rem;
     align-items: start;
 }
@@ -682,7 +725,7 @@ header {
 
 .control-panel {
     display: grid;
-    grid-template-columns: 1.1fr 0.7fr 0.9fr 1.2fr auto;
+    grid-template-columns: minmax(170px, 1.1fr) minmax(120px, 0.7fr) minmax(150px, 0.9fr) minmax(170px, 1.2fr) auto;
     gap: 0.75rem;
     padding: 1rem;
     margin-bottom: 1rem;
@@ -690,10 +733,12 @@ header {
 
 .table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 table {
     width: 100%;
+    min-width: 680px;
     border-collapse: collapse;
 }
 
@@ -707,6 +752,7 @@ td {
 
 td {
     color: var(--ink);
+    overflow-wrap: anywhere;
 }
 
 th {
@@ -746,6 +792,106 @@ th {
     font-size: 0.875rem;
 }
 
+.settings-panel {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.settings-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: 1rem;
+}
+
+.role-card {
+    padding: 1rem;
+    box-shadow: none;
+}
+
+.role-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.role-card-header h2 {
+    margin: 0;
+}
+
+.permission-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.permission-toggle {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 40px;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(69, 55, 43, 0.14);
+    border-radius: 8px;
+    background: #fffdf8;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.permission-toggle input {
+    width: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    accent-color: var(--accent-burgundy);
+}
+
+.permission-toggle:has(input:checked) {
+    border-color: rgba(40, 112, 82, 0.34);
+    background: rgba(40, 112, 82, 0.08);
+}
+
+.permission-toggle:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.app-toast {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 300;
+    max-width: min(360px, calc(100vw - 2rem));
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(40, 112, 82, 0.28);
+    border-radius: 8px;
+    background: #fffdf8;
+    color: var(--accent-emerald);
+    box-shadow: 0 18px 44px rgba(31, 26, 22, 0.22);
+    font-weight: 700;
+    animation: fadeIn 0.18s ease forwards;
+}
+
+.app-toast.error {
+    border-color: rgba(180, 35, 47, 0.28);
+    color: var(--accent-rose);
+}
+
+.app-toast.hiding {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: var(--transition);
+    pointer-events: none;
+}
+
 .empty-state {
     display: grid;
     place-items: center;
@@ -777,9 +923,18 @@ th {
     .kitchen-board {
         grid-template-columns: 1fr;
     }
+
+    .cart-panel,
+    .kitchen-column {
+        min-height: auto;
+    }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
+    :root {
+        --page-gutter: 1.25rem;
+    }
+
     .sidebar {
         width: 82px;
         padding: 1.25rem 0.7rem;
@@ -793,7 +948,6 @@ th {
 
     main {
         margin-left: 82px;
-        padding: 1.25rem;
     }
 
     header,
@@ -803,6 +957,201 @@ th {
     }
 
     .search-bar {
+        flex-basis: auto;
         width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --page-gutter: 1rem;
+    }
+
+    body {
+        display: block;
+        padding-bottom: 76px;
+        background:
+            radial-gradient(circle at top right, rgba(200, 155, 60, 0.12), transparent 36%),
+            #efe5d6;
+    }
+
+    .login-screen {
+        padding: 1rem;
+    }
+
+    .login-panel {
+        padding: 1.35rem;
+    }
+
+    .sidebar {
+        inset: auto 0 0 0;
+        width: 100%;
+        height: 68px;
+        padding: 0.45rem 0.55rem max(0.45rem, env(safe-area-inset-bottom));
+        border-top: 1px solid rgba(255, 250, 240, 0.12);
+        border-right: 0;
+        box-shadow: 0 -10px 28px rgba(31, 26, 22, 0.22);
+    }
+
+    .sidebar .logo {
+        display: none;
+    }
+
+    .nav-links {
+        height: 100%;
+        flex-direction: row;
+        gap: 0.35rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .nav-links::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-links li {
+        flex: 0 0 62px;
+    }
+
+    .nav-item {
+        height: 100%;
+        min-height: 52px;
+        justify-content: center;
+        padding: 0.55rem;
+        border-radius: 8px;
+    }
+
+    .nav-item.active {
+        box-shadow: inset 0 3px 0 var(--accent-gold);
+    }
+
+    main {
+        width: 100%;
+        margin-left: 0;
+        padding: 1rem var(--page-gutter) 1.5rem;
+    }
+
+    header {
+        margin-bottom: 1.35rem;
+    }
+
+    h1 {
+        font-size: 1.55rem;
+    }
+
+    .page-title {
+        gap: 0.75rem;
+    }
+
+    .page-title > *,
+    .page-title button,
+    .primary-btn,
+    .secondary-btn {
+        width: 100%;
+    }
+
+    .user-profile {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .user-info {
+        display: block;
+        text-align: left;
+    }
+
+    .stats-grid,
+    .menu-grid {
+        gap: 0.8rem;
+    }
+
+    .stat-card,
+    .menu-info,
+    .cart-header,
+    .cart-total,
+    .cart-items,
+    .kitchen-ticket {
+        padding: 0.85rem;
+    }
+
+    .stat-value {
+        font-size: 1.45rem;
+    }
+
+    .menu-image {
+        height: 154px;
+    }
+
+    .menu-footer,
+    .order-card-header,
+    .cart-item,
+    .total-row,
+    .list-row {
+        align-items: flex-start;
+    }
+
+    .menu-footer,
+    .order-card-header,
+    .list-row {
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .category-filters {
+        position: static;
+        flex-wrap: nowrap;
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding: 0.65rem 1rem;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+    }
+
+    .filter-btn {
+        flex: 0 0 auto;
+    }
+
+    .control-panel {
+        padding: 0.85rem;
+    }
+
+    .settings-actions,
+    .settings-actions .button-row,
+    .settings-actions .button-row button {
+        width: 100%;
+    }
+
+    .role-card {
+        padding: 0.85rem;
+    }
+
+    .app-toast {
+        right: 0.75rem;
+        bottom: 5.4rem;
+        max-width: calc(100vw - 1.5rem);
+    }
+
+    th,
+    td {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 390px) {
+    :root {
+        --page-gutter: 0.75rem;
+    }
+
+    .search-bar {
+        padding: 0 0.75rem;
+    }
+
+    .nav-links li {
+        flex-basis: 56px;
+    }
+
+    .icon-btn {
+        width: 40px;
     }
 }
