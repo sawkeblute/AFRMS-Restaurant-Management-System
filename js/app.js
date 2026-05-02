@@ -9,7 +9,7 @@ import {
     INITIAL_ORDERS
 } from './data.js';
 
-const STORAGE_KEY = 'afrms-state-v5-shop-board-menu';
+const STORAGE_KEY = 'afrms-state-v6-menu-images-beverages';
 const currency = new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' });
 
 class App {
