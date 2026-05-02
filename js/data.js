@@ -1,11 +1,12 @@
 const TAX_RATE = 0.07;
 
 const USERS = [
-    { id: "USR-001", name: "Saw Ke Blute", role: "Owner", username: "owner", password: "owner123" },
-    { id: "USR-002", name: "Samantha Jawjong", role: "Manager", username: "manager", password: "manager123" },
-    { id: "USR-003", name: "Saw Joshua", role: "Cashier", username: "cashier", password: "cashier123" },
-    { id: "USR-004", name: "Saw Eh Thalay Htoo", role: "Kitchen Staff", username: "kitchen", password: "kitchen123" },
-    { id: "USR-005", name: "Similosakhe Moyo", role: "Inventory Staff", username: "inventory", password: "inventory123" }
+    { id: "USR-001", name: "Owner Demo", role: "Owner", username: "owner", password: "owner" },
+    { id: "USR-002", name: "Manager Demo", role: "Manager", username: "manager", password: "manager" },
+    { id: "USR-003", name: "Cashier Demo", role: "Cashier", username: "cashier", password: "cashier" },
+    { id: "USR-004", name: "Kitchen Demo", role: "Kitchen Staff", username: "kitchen", password: "kitchen" },
+    { id: "USR-005", name: "Inventory Demo", role: "Inventory Staff", username: "inventory", password: "inventory" },
+    { id: "USR-006", name: "Full System Demo", role: "Demo", username: "demo", password: "demo" }
 ];
 
 const ROLE_PERMISSIONS = {
@@ -13,7 +14,8 @@ const ROLE_PERMISSIONS = {
     Manager: ["dashboard", "menu", "orders", "inventory", "reports"],
     Cashier: ["dashboard", "pos", "orders"],
     "Kitchen Staff": ["orders"],
-    "Inventory Staff": ["dashboard", "inventory", "reports"]
+    "Inventory Staff": ["dashboard", "inventory", "reports"],
+    Demo: ["dashboard", "menu", "pos", "orders", "inventory", "reports", "audit", "settings"]
 };
 
 const IMG = {

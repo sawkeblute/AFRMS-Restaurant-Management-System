@@ -48,11 +48,12 @@ This project follows a structured GitHub workflow:
 
 | Role | Username | Password |
 | --- | --- | --- |
-| Owner | `owner` | `owner123` |
-| Manager | `manager` | `manager123` |
-| Cashier | `cashier` | `cashier123` |
-| Kitchen Staff | `kitchen` | `kitchen123` |
-| Inventory Staff | `inventory` | `inventory123` |
+| Demo Full Access | `demo` | `demo` |
+| Owner | `owner` | `owner` |
+| Manager | `manager` | `manager` |
+| Cashier | `cashier` | `cashier` |
+| Kitchen Staff | `kitchen` | `kitchen` |
+| Inventory Staff | `inventory` | `inventory` |
 
 ## Local Verification
 
