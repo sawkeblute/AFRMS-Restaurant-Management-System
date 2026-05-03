@@ -51,6 +51,10 @@
                 <i data-lucide="search"></i>
                 <input id="global-search" type="text" placeholder="Search menu, orders, inventory">
             </div>
+            <div class="history-actions" aria-label="History controls">
+                <button id="undo-btn" class="icon-btn" type="button" title="Undo last change" disabled><i data-lucide="undo-2"></i></button>
+                <button id="redo-btn" class="icon-btn" type="button" title="Redo last change" disabled><i data-lucide="redo-2"></i></button>
+            </div>
             <div class="user-profile">
                 <div class="user-info">
                     <p id="current-user-name">-</p>
@@ -60,6 +64,7 @@
             </div>
         </header>
 
+        <div id="app-alert" class="app-alert" role="alert" aria-live="assertive" hidden></div>
         <div id="view-container"></div>
     </main>
 
@@ -105,7 +110,10 @@
             <div class="pos-container">
                 <div class="menu-grid" id="pos-menu-grid"></div>
                 <div class="cart-panel">
-                    <div class="cart-header">Current Order</div>
+                    <div class="cart-header">
+                        <span>Current Order</span>
+                        <button class="secondary-btn compact" id="clear-cart-btn" type="button"><i data-lucide="trash-2"></i> Clear</button>
+                    </div>
                     <div class="cart-items" id="cart-items"></div>
                     <div class="cart-total">
                         <div class="total-row"><span>Subtotal</span><span id="cart-subtotal">฿0.00</span></div>
@@ -115,6 +123,7 @@
                             Payment Amount (THB)
                             <input id="payment-amount" type="number" min="0" step="0.01" placeholder="0.00">
                         </label>
+                        <div class="total-row"><span>Change Due</span><span id="change-due">฿0.00</span></div>
                         <button class="primary-btn" id="checkout-btn"><i data-lucide="receipt"></i> Process Payment</button>
                         <p id="pos-message" class="message-text"></p>
                     </div>
@@ -152,6 +161,15 @@
                     <tbody id="inventory-table"></tbody>
                 </table>
             </div>
+            <section class="section-block">
+                <h2>Recent Stock Activity</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Time</th><th>Ingredient</th><th>Action</th><th>Quantity</th><th>Note</th></tr></thead>
+                        <tbody id="inventory-transactions-table"></tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     </template>
 
