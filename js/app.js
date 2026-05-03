@@ -28,6 +28,9 @@ class App {
         this.currentView = 'dashboard';
         this.currentUser = null;
         this.cart = [];
+        this.searchQuery = '';
+        this.undoStack = [];
+        this.redoStack = [];
         this.state = this.loadState();
         this.init();
     }
@@ -35,18 +38,35 @@ class App {
     init() {
         document.getElementById('login-form').addEventListener('submit', (event) => this.login(event));
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
+        document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+        document.getElementById('redo-btn').addEventListener('click', () => this.redo());
+        document.getElementById('global-search').addEventListener('input', (event) => {
+            this.searchQuery = event.target.value.trim().toLowerCase();
+            this.renderView(this.currentView);
+        });
         this.setupNavigation();
+        this.updateHistoryButtons();
         this.refreshIcons();
     }
 
     loadState() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-            const parsed = JSON.parse(saved);
-            return {
-                ...parsed,
-                rolePermissions: this.normalizeRolePermissions(parsed.rolePermissions)
-            };
+            try {
+                const parsed = JSON.parse(saved);
+                return {
+                    ...parsed,
+                    menu: parsed.menu || MENU_DATA.map(item => ({ ...item })),
+                    inventory: parsed.inventory || INITIAL_INVENTORY.map(item => ({ ...item })),
+                    orders: parsed.orders || INITIAL_ORDERS.map(order => ({ ...order })),
+                    inventoryTransactions: parsed.inventoryTransactions || [],
+                    auditLogs: parsed.auditLogs || [],
+                    rolePermissions: this.normalizeRolePermissions(parsed.rolePermissions)
+                };
+            } catch (error) {
+                console.error('Unable to restore saved AFRMS state.', error);
+                localStorage.removeItem(STORAGE_KEY);
+            }
         }
 
         return {
@@ -76,6 +96,48 @@ class App {
 
     persist() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        this.updateHistoryButtons();
+    }
+
+    snapshotState() {
+        return JSON.stringify(this.state);
+    }
+
+    restoreState(snapshot) {
+        this.state = JSON.parse(snapshot);
+        this.persist();
+        this.applyRolePermissions();
+        if (!this.canAccess(this.currentView)) this.currentView = this.firstAllowedView();
+        this.renderView(this.currentView);
+    }
+
+    rememberChange() {
+        this.undoStack.push(this.snapshotState());
+        if (this.undoStack.length > 30) this.undoStack.shift();
+        this.redoStack = [];
+        this.updateHistoryButtons();
+    }
+
+    undo() {
+        if (!this.undoStack.length) return;
+        this.redoStack.push(this.snapshotState());
+        this.restoreState(this.undoStack.pop());
+        this.toast('Last change undone.');
+    }
+
+    redo() {
+        if (!this.redoStack.length) return;
+        this.undoStack.push(this.snapshotState());
+        this.restoreState(this.redoStack.pop());
+        this.toast('Change reapplied.');
+    }
+
+    updateHistoryButtons() {
+        const undo = document.getElementById('undo-btn');
+        const redo = document.getElementById('redo-btn');
+        if (!undo || !redo) return;
+        undo.disabled = !this.undoStack.length;
+        redo.disabled = !this.redoStack.length;
     }
 
     refreshIcons() {
@@ -156,6 +218,7 @@ class App {
             return;
         }
 
+        this.clearAlert();
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         const active = document.querySelector(`[data-view="${view}"]`);
         if (active) active.classList.add('active');
@@ -192,6 +255,37 @@ class App {
         };
         methods[view]?.();
         this.refreshIcons();
+    }
+
+    showAlert(text, type = 'error') {
+        const alert = document.getElementById('app-alert');
+        if (!alert) return;
+        alert.hidden = false;
+        alert.className = `app-alert ${type}`;
+        alert.innerHTML = `<i data-lucide="${type === 'error' ? 'triangle-alert' : 'info'}"></i><span>${this.escapeHtml(text)}</span>`;
+        this.refreshIcons();
+    }
+
+    clearAlert() {
+        const alert = document.getElementById('app-alert');
+        if (!alert) return;
+        alert.hidden = true;
+        alert.textContent = '';
+    }
+
+    matchesSearch(values) {
+        if (!this.searchQuery) return true;
+        return values.filter(Boolean).join(' ').toLowerCase().includes(this.searchQuery);
+    }
+
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        })[char]);
     }
 
     audit(action, entityId, justification = '') {
@@ -280,7 +374,8 @@ class App {
 
     renderMenuItems(category) {
         const grid = document.getElementById('menu-grid');
-        const items = category === 'All' ? this.state.menu : this.state.menu.filter(item => item.category === category);
+        const items = (category === 'All' ? this.state.menu : this.state.menu.filter(item => item.category === category))
+            .filter(item => this.matchesSearch([item.name, item.thaiName, item.category, item.description, item.price]));
         grid.innerHTML = items.map(item => `
             <article class="menu-card">
                 <img src="${item.image}" alt="${item.name}" class="menu-image">
@@ -293,12 +388,13 @@ class App {
                         <span class="pill">${item.category}</span>
                     </div>
                 </div>
-            </article>`).join('');
+            </article>`).join('') || `<div class="empty-inline">${this.emptyText('No menu items match your search.')}</div>`;
     }
 
     initPOS() {
         const grid = document.getElementById('pos-menu-grid');
-        grid.innerHTML = this.state.menu.map(item => `
+        const items = this.state.menu.filter(item => this.matchesSearch([item.name, item.thaiName, item.category, item.price]));
+        grid.innerHTML = items.map(item => `
             <button class="menu-card pos-card" data-id="${item.id}">
                 <div class="menu-info">
                     <h3 class="menu-name">${item.name}</h3>
@@ -306,19 +402,23 @@ class App {
                     <span class="muted">${item.category}</span>
                     <span class="menu-price">${currency.format(item.price)}</span>
                 </div>
-            </button>`).join('');
+            </button>`).join('') || `<div class="empty-inline">${this.emptyText('No POS items match your search.')}</div>`;
         grid.querySelectorAll('[data-id]').forEach(card => {
             card.addEventListener('click', () => this.addToCart(Number(card.dataset.id)));
         });
         document.getElementById('checkout-btn').addEventListener('click', () => this.checkout());
+        document.getElementById('clear-cart-btn').addEventListener('click', () => this.clearCart());
+        document.getElementById('payment-amount').addEventListener('input', () => this.updateChangeDue());
         this.renderCart();
     }
 
     addToCart(id) {
         const item = this.state.menu.find(menuItem => menuItem.id === id);
+        if (!item) return;
         const existing = this.cart.find(cartItem => cartItem.id === id);
         if (existing) existing.quantity += 1;
         else this.cart.push({ ...item, quantity: 1 });
+        this.clearAlert();
         this.renderCart();
     }
 
@@ -328,6 +428,24 @@ class App {
         if (this.cart[index].quantity > 1) this.cart[index].quantity -= 1;
         else this.cart.splice(index, 1);
         this.renderCart();
+    }
+
+    setCartQuantity(id, quantity) {
+        const index = this.cart.findIndex(item => item.id === id);
+        if (index < 0) return;
+        if (quantity <= 0) this.cart.splice(index, 1);
+        else this.cart[index].quantity = Math.min(99, quantity);
+        this.renderCart();
+    }
+
+    clearCart() {
+        if (!this.cart.length) {
+            this.showAlert('There is no active order to clear.', 'info');
+            return;
+        }
+        this.cart = [];
+        this.renderCart();
+        this.toast('Current order cleared.');
     }
 
     cartTotals() {
@@ -345,10 +463,20 @@ class App {
                     <h4>${item.name}</h4>
                     <span>${currency.format(item.price)} x ${item.quantity}</span>
                 </div>
-                <button class="icon-btn small" data-remove="${item.id}" title="Remove item"><i data-lucide="minus"></i></button>
+                <div class="quantity-stepper" aria-label="${item.name} quantity">
+                    <button class="icon-btn small" data-remove="${item.id}" title="Decrease quantity"><i data-lucide="minus"></i></button>
+                    <input data-quantity="${item.id}" type="number" min="0" max="99" value="${item.quantity}" aria-label="${item.name} quantity">
+                    <button class="icon-btn small" data-add="${item.id}" title="Increase quantity"><i data-lucide="plus"></i></button>
+                </div>
             </div>`).join('') || this.emptyText('No items in this order.');
         list.querySelectorAll('[data-remove]').forEach(button => {
             button.addEventListener('click', () => this.removeFromCart(Number(button.dataset.remove)));
+        });
+        list.querySelectorAll('[data-add]').forEach(button => {
+            button.addEventListener('click', () => this.addToCart(Number(button.dataset.add)));
+        });
+        list.querySelectorAll('[data-quantity]').forEach(input => {
+            input.addEventListener('change', () => this.setCartQuantity(Number(input.dataset.quantity), Number(input.value)));
         });
 
         const totals = this.cartTotals();
@@ -356,7 +484,15 @@ class App {
         document.getElementById('cart-tax').textContent = currency.format(totals.tax);
         document.getElementById('cart-total-price').textContent = currency.format(totals.total);
         document.getElementById('payment-amount').value = totals.total ? totals.total.toFixed(2) : '';
+        this.updateChangeDue();
         this.refreshIcons();
+    }
+
+    updateChangeDue() {
+        const changeDue = document.getElementById('change-due');
+        const payment = Number(document.getElementById('payment-amount')?.value || 0);
+        const due = Math.max(0, payment - this.cartTotals().total);
+        if (changeDue) changeDue.textContent = currency.format(due);
     }
 
     checkout() {
@@ -366,19 +502,28 @@ class App {
 
         if (!this.cart.length) {
             message.textContent = 'Payment failed: the cart is empty.';
+            this.showAlert('Payment failed because the cart is empty. Add at least one item before processing.');
             return;
         }
-        if (Number.isNaN(paymentAmount) || paymentAmount < totals.total) {
-            message.textContent = 'Payment failed: The amount entered is less than the total.';
+        if (Number.isNaN(paymentAmount) || paymentAmount <= 0) {
+            message.textContent = 'Payment failed: enter a valid payment amount.';
+            this.showAlert('Payment failed because the payment amount must be greater than zero.');
+            return;
+        }
+        if (paymentAmount < totals.total) {
+            message.textContent = 'Payment failed: the amount entered is less than the total.';
+            this.showAlert(`Payment failed. The customer still owes ${currency.format(totals.total - paymentAmount)}.`);
             return;
         }
 
         const stockError = this.validateStock();
         if (stockError) {
             message.textContent = stockError;
+            this.showAlert(stockError);
             return;
         }
 
+        this.rememberChange();
         const order = {
             id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
             userId: this.currentUser.id,
@@ -403,6 +548,7 @@ class App {
         this.cart = [];
         this.persist();
         this.toast(`Receipt ${order.id} processed for ${currency.format(order.total)}.`);
+        this.clearAlert();
         this.switchView('dashboard');
     }
 
@@ -445,7 +591,14 @@ class App {
         const statuses = ['Preparing', 'Ready', 'Completed'];
         grid.className = 'kitchen-board';
         grid.innerHTML = statuses.map(status => {
-            const orders = this.state.orders.filter(order => order.status === status);
+            const orders = this.state.orders
+                .filter(order => order.status === status)
+                .filter(order => this.matchesSearch([
+                    order.id,
+                    order.userId,
+                    order.status,
+                    order.items.map(item => item.name).join(' ')
+                ]));
             return `
                 <section class="kitchen-column">
                     <div class="kitchen-column-header">
@@ -491,6 +644,7 @@ class App {
     updateOrderStatus(orderId, status) {
         const order = this.state.orders.find(item => item.id === orderId);
         if (!order) return;
+        this.rememberChange();
         order.status = status;
         this.audit('ORDER_STATUS_UPDATED', order.id, `Kitchen status changed to ${status}`);
         this.persist();
@@ -503,6 +657,7 @@ class App {
         select.innerHTML = this.state.inventory.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
         document.getElementById('stock-form').addEventListener('submit', (event) => this.recordStock(event));
         this.renderInventoryTable();
+        this.renderInventoryTransactions();
     }
 
     recordStock(event) {
@@ -514,10 +669,12 @@ class App {
         const ingredient = this.state.inventory.find(item => item.id === ingredientId);
 
         if (!ingredient || Number.isNaN(amount) || amount <= 0 || !note) {
+            this.showAlert('Stock update failed. Enter a positive quantity and a clear justification.');
             this.toast('Please enter a positive quantity and justification.', 'error');
             return;
         }
 
+        this.rememberChange();
         ingredient.quantity = action === 'ADD'
             ? Number((ingredient.quantity + amount).toFixed(2))
             : Number(amount.toFixed(2));
@@ -532,12 +689,14 @@ class App {
         this.audit('INVENTORY_UPDATED', ingredientId, note);
         this.persist();
         this.toast(`${ingredient.name} stock updated.`);
+        this.clearAlert();
         event.target.reset();
         this.initInventory();
     }
 
     renderInventoryTable() {
-        document.getElementById('inventory-table').innerHTML = this.state.inventory.map(item => {
+        const items = this.state.inventory.filter(item => this.matchesSearch([item.id, item.name, item.unit, item.quantity]));
+        document.getElementById('inventory-table').innerHTML = items.map(item => {
             const low = item.quantity <= item.reorderLevel;
             return `<tr>
                 <td>${item.name}</td>
@@ -545,7 +704,32 @@ class App {
                 <td>${this.formatQty(item.reorderLevel)} ${item.unit}</td>
                 <td><span class="pill ${low ? 'danger' : ''}">${low ? 'Low Stock' : 'Healthy'}</span></td>
             </tr>`;
-        }).join('');
+        }).join('') || `<tr><td colspan="4">No inventory items match your search.</td></tr>`;
+    }
+
+    renderInventoryTransactions() {
+        const rows = this.state.inventoryTransactions
+            .filter(transaction => {
+                const ingredient = this.state.inventory.find(item => item.id === transaction.ingredientId);
+                return this.matchesSearch([
+                    ingredient?.name,
+                    transaction.action,
+                    transaction.justification,
+                    transaction.orderId
+                ]);
+            })
+            .slice(0, 10);
+
+        document.getElementById('inventory-transactions-table').innerHTML = rows.map(transaction => {
+            const ingredient = this.state.inventory.find(item => item.id === transaction.ingredientId);
+            return `<tr>
+                <td>${new Date(transaction.timestamp).toLocaleString()}</td>
+                <td>${this.escapeHtml(ingredient?.name || transaction.ingredientId)}</td>
+                <td><span class="pill ${transaction.action === 'DEDUCT' ? 'danger' : ''}">${transaction.action}</span></td>
+                <td>${this.formatQty(transaction.quantity)} ${ingredient?.unit || ''}</td>
+                <td>${this.escapeHtml(transaction.justification || transaction.orderId || '-')}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="5">No stock activity recorded yet.</td></tr>`;
     }
 
     initReports() {
@@ -554,25 +738,38 @@ class App {
         document.getElementById('report-cost').textContent = currency.format(totals.cost);
         document.getElementById('report-profit').textContent = currency.format(totals.profit);
         document.getElementById('report-average').textContent = currency.format(totals.average);
-        document.getElementById('report-table').innerHTML = this.state.orders.map(order => `
+        const orders = this.state.orders.filter(order => this.matchesSearch([
+            order.id,
+            order.userId,
+            order.status,
+            order.paymentStatus,
+            order.items.map(item => item.name).join(' ')
+        ]));
+        document.getElementById('report-table').innerHTML = orders.map(order => `
             <tr>
                 <td>${order.id}</td>
                 <td>${order.userId}</td>
                 <td>${order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}</td>
                 <td>${order.status}</td>
                 <td>${currency.format(order.total)}</td>
-            </tr>`).join('');
+            </tr>`).join('') || `<tr><td colspan="5">No orders match your search.</td></tr>`;
     }
 
     initAudit() {
-        document.getElementById('audit-table').innerHTML = this.state.auditLogs.map(log => `
+        const logs = this.state.auditLogs.filter(log => this.matchesSearch([
+            log.userName,
+            log.action,
+            log.entityId,
+            log.justification
+        ]));
+        document.getElementById('audit-table').innerHTML = logs.map(log => `
             <tr>
                 <td>${new Date(log.timestamp).toLocaleString()}</td>
-                <td>${log.userName}</td>
-                <td>${log.action}</td>
-                <td>${log.entityId}</td>
-                <td>${log.justification}</td>
-            </tr>`).join('') || `<tr><td colspan="5">No audit events recorded.</td></tr>`;
+                <td>${this.escapeHtml(log.userName)}</td>
+                <td>${this.escapeHtml(log.action)}</td>
+                <td>${this.escapeHtml(log.entityId)}</td>
+                <td>${this.escapeHtml(log.justification)}</td>
+            </tr>`).join('') || `<tr><td colspan="5">No audit events match your search.</td></tr>`;
     }
 
     initSettings() {
@@ -637,9 +834,11 @@ class App {
 
         if (hasEmptyRole) {
             document.getElementById('settings-message').textContent = 'Every role needs at least one accessible module.';
+            this.showAlert('Permission update failed. Every role needs at least one accessible module.');
             return;
         }
 
+        this.rememberChange();
         this.state.rolePermissions = nextPermissions;
         this.audit('RBAC_UPDATED', 'RolePermissions', 'Role access matrix updated');
         this.persist();
@@ -654,6 +853,7 @@ class App {
     }
 
     resetRolePermissions() {
+        this.rememberChange();
         this.state.rolePermissions = this.defaultRolePermissions();
         this.audit('RBAC_RESET', 'RolePermissions', 'Role access matrix reset to defaults');
         this.persist();
