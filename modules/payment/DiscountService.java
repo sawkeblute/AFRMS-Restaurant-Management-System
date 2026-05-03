@@ -1,3 +1,5 @@
+package modules.payment;
+
 public class DiscountService {
 
     // Apply discount based on type

@@ -1,3 +1,18 @@
+import modules.payment.Payment;
+import modules.auth.AuthService;
+import modules.auth.User;
+import modules.audit.AuditLog;
+import modules.inventory.InventoryController;
+import modules.menu.MenuCatalog;
+import modules.orders.Order;
+import modules.orders.OrderItem;
+import modules.orders.OrderService;
+import modules.reporting.ReportingService;
+import modules.reporting.SalesReport;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class TestRunner {
 
     public static void main(String[] args) {
@@ -7,7 +22,7 @@ public class TestRunner {
         System.out.println("=================================\n");
 
         int passed = 0;
-        int total = 5;
+        int total = 8;
 
         // Test Case 1: Happy Path
         System.out.println("Test Case 1: Happy Path (Valid Order & Payment)");
@@ -64,6 +79,41 @@ public class TestRunner {
             System.out.println("Result: FAIL\n");
         }
 
+        AuditLog.clear();
+        AuthService authService = new AuthService();
+        User cashier = authService.login("cashier", "cashier");
+        if (assertTrue("Test Case 6: RBAC allows cashier POS access and blocks settings", cashier != null
+                && authService.canAccess(cashier, "pos")
+                && !authService.canAccess(cashier, "settings"))) {
+            passed++;
+        }
+
+        InventoryController inventoryController = new InventoryController();
+        MenuCatalog menuCatalog = new MenuCatalog();
+        OrderService orderService = new OrderService(menuCatalog, inventoryController);
+
+        List<OrderItem> cart = new ArrayList<>();
+        cart.add(new OrderItem(42, "Spicy Basil Pork with Rice", 1, 45, 20));
+        cart.add(new OrderItem(49, "Fried Egg", 1, 15, 5));
+        Order paidOrder = orderService.createPaidOrder(cashier.getId(), cart, 100);
+
+        if (assertTrue("Test Case 7: POS checkout creates paid VAT order and deducts recipe inventory", paidOrder != null
+                && "Paid".equals(paidOrder.getPaymentStatus())
+                && paidOrder.getTotal() == 64.2
+                && inventoryController.getStockQuantity("ING-002") < 22
+                && !inventoryController.getTransactions().isEmpty())) {
+            passed++;
+        }
+
+        ReportingService reportingService = new ReportingService();
+        SalesReport report = reportingService.summarize(orderService.getOrders(), inventoryController);
+        if (assertTrue("Test Case 8: Reporting summary matches paid order data", report.getPaidOrderCount() == 1
+                && report.getRevenue() == paidOrder.getTotal()
+                && report.getProfit() == paidOrder.getTotal() - 25
+                && !AuditLog.getEntries().isEmpty())) {
+            passed++;
+        }
+
         // Summary
         System.out.println("=================================");
         System.out.println("[INFO] All tests executed");
@@ -77,5 +127,15 @@ public class TestRunner {
             System.out.println("[INFO] Status: FAIL");
         }
         System.out.println("=================================");
+    }
+
+    private static boolean assertTrue(String label, boolean condition) {
+        System.out.println(label);
+        if (condition) {
+            System.out.println("Result: PASS\n");
+            return true;
+        }
+        System.out.println("Result: FAIL\n");
+        return false;
     }
 }

@@ -1,14 +1,20 @@
+package modules.payment;
+
+import modules.audit.AuditLog;
+
 public class Payment {
 
     private double amountPaid;
     private double orderTotal;
     private double change;
+    private String receiptId;
     private String status; // SUCCESS / FAILED
 
     public Payment() {
         this.amountPaid = 0.0;
         this.orderTotal = 0.0;
         this.change = 0.0;
+        this.receiptId = "";
         this.status = "NOT_PROCESSED";
     }
 
@@ -26,6 +32,7 @@ public class Payment {
         }
 
         this.change = calculateChange(amountPaid, orderTotal);
+        this.receiptId = "RCT-" + System.currentTimeMillis();
         this.status = "SUCCESS";
 
         AuditLog.log("Payment successful. Change: " + change);
@@ -83,6 +90,10 @@ public class Payment {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getReceiptId() {
+        return receiptId;
     }
 
     // Print summary (useful for testing)
