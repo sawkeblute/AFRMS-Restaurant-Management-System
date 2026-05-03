@@ -1,14 +1,36 @@
+package modules.orders;
+
+import modules.audit.AuditLog;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class Order {
 
+    private static final double TAX_RATE = 0.07;
+
+    private String id;
+    private String userId;
     private List<OrderItem> items;
+    private double subtotal;
+    private double tax;
     private double total;
+    private String status;
+    private String paymentStatus;
 
     public Order() {
+        this("ORD-DRAFT", "UNKNOWN");
+    }
+
+    public Order(String id, String userId) {
+        this.id = id;
+        this.userId = userId;
         items = new ArrayList<>();
+        subtotal = 0.0;
+        tax = 0.0;
         total = 0.0;
+        status = "Preparing";
+        paymentStatus = "Unpaid";
     }
 
     // Add item to order
@@ -32,16 +54,52 @@ public class Order {
 
     // Calculate total price
     public void calculateTotal() {
-        total = 0.0;
+        subtotal = 0.0;
 
         for (OrderItem item : items) {
-            total += item.calculateTotal();
+            subtotal += item.calculateTotal();
         }
+
+        tax = subtotal * TAX_RATE;
+        total = subtotal + tax;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public double getSubtotal() {
+        return subtotal;
+    }
+
+    public double getTax() {
+        return tax;
     }
 
     // Get total
     public double getTotal() {
         return total;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        if (status == null || status.trim().isEmpty()) return;
+        this.status = status;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void markPaid() {
+        this.paymentStatus = "Paid";
     }
 
     // Print full order summary
@@ -57,6 +115,8 @@ public class Order {
             item.printItem();
         }
 
+        System.out.println("Subtotal: " + subtotal);
+        System.out.println("VAT: " + tax);
         System.out.println("Total Amount: " + total);
         System.out.println("=========================");
     }

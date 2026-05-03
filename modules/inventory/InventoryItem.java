@@ -1,22 +1,48 @@
+package modules.inventory;
+
+import modules.audit.AuditLog;
+
 public class InventoryItem {
 
+    private String itemId;
     private String itemName;
-    private int quantity;
+    private String unit;
+    private double quantity;
+    private double reorderLevel;
     private double price;
 
     public InventoryItem(String itemName, int quantity, double price) {
+        this(itemName, itemName, "pcs", quantity, 5, price);
+    }
+
+    public InventoryItem(String itemId, String itemName, String unit, double quantity, double reorderLevel, double price) {
+        this.itemId = itemId;
         this.itemName = itemName;
+        this.unit = unit;
         this.quantity = quantity;
+        this.reorderLevel = reorderLevel;
         this.price = price;
     }
 
     // Getters
+    public String getItemId() {
+        return itemId;
+    }
+
     public String getItemName() {
         return itemName;
     }
 
-    public int getQuantity() {
+    public String getUnit() {
+        return unit;
+    }
+
+    public double getQuantity() {
         return quantity;
+    }
+
+    public double getReorderLevel() {
+        return reorderLevel;
     }
 
     public double getPrice() {
@@ -24,7 +50,7 @@ public class InventoryItem {
     }
 
     // Setters
-    public void setQuantity(int quantity) {
+    public void setQuantity(double quantity) {
         if (quantity < 0) {
             System.out.println("Quantity cannot be negative.");
             return;
@@ -41,7 +67,7 @@ public class InventoryItem {
     }
 
     // Add stock
-    public void addStock(int amount) {
+    public void addStock(double amount) {
         if (amount <= 0) {
             System.out.println("Invalid stock amount.");
             return;
@@ -51,7 +77,7 @@ public class InventoryItem {
     }
 
     // Reduce stock
-    public boolean reduceStock(int amount) {
+    public boolean reduceStock(double amount) {
         if (amount <= 0) {
             System.out.println("Invalid reduction amount.");
             return false;
@@ -71,6 +97,10 @@ public class InventoryItem {
     // Calculate total value of this item
     public double calculateTotalValue() {
         return quantity * price;
+    }
+
+    public boolean isLowStock() {
+        return quantity <= reorderLevel;
     }
 
     // Display item info

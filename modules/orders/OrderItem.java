@@ -1,10 +1,18 @@
+package modules.orders;
+
 public class OrderItem {
 
+    private int menuItemId;
     private String itemName;
     private int quantity;
     private double unitPrice;
+    private double cost;
 
     public OrderItem(String itemName, int quantity, double unitPrice) {
+        this(0, itemName, quantity, unitPrice, 0);
+    }
+
+    public OrderItem(int menuItemId, String itemName, int quantity, double unitPrice, double cost) {
         if (itemName == null || itemName.isEmpty()) {
             System.out.println("Invalid item name.");
             return;
@@ -20,12 +28,18 @@ public class OrderItem {
             return;
         }
 
+        this.menuItemId = menuItemId;
         this.itemName = itemName;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
+        this.cost = cost;
     }
 
     // Getters
+    public int getMenuItemId() {
+        return menuItemId;
+    }
+
     public String getItemName() {
         return itemName;
     }
@@ -36,6 +50,10 @@ public class OrderItem {
 
     public double getUnitPrice() {
         return unitPrice;
+    }
+
+    public double getCost() {
+        return cost;
     }
 
     // Setters

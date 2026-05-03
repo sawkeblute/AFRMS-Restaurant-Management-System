@@ -58,6 +58,6 @@ This project follows a structured GitHub workflow:
 ## Local Verification
 
 ```bash
-javac *.java
-java TestRunner
+javac -d out modules/audit/*.java modules/auth/*.java modules/menu/*.java modules/orders/*.java modules/payment/*.java modules/inventory/*.java modules/reporting/*.java tests/*.java
+java -cp out TestRunner
 ```
